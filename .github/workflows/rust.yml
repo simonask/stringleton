@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
       - name: Build
-        run: cargo miri test --features debug-assertions
+        run: cargo +nightly miri test --features debug-assertions
   lint:
     name: Lint
     runs-on: ubuntu-latest
