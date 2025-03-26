@@ -1,0 +1,12 @@
+[package]
+name = "dynamic-library"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+stringleton.path = "../../../stringleton"

@@ -1,0 +1,29 @@
+[package]
+name = "stringleton"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+crate-type = ["rlib"]
+
+[dependencies]
+ctor.workspace = true
+linkme.workspace = true
+stringleton-registry = { path = "../stringleton-registry", default-features = false }
+
+[dev-dependencies]
+hashbrown.workspace = true
+
+[features]
+default = ["std"]
+std = ["alloc", "stringleton-registry/std"]
+alloc = ["stringleton-registry/alloc"]
+debug-assertions = ["stringleton-registry/debug-assertions"]
+serde = ["stringleton-registry/serde"]
+critical-section = ["stringleton-registry/critical-section"]
+race = ["stringleton-registry/race"]
+spin = ["stringleton-registry/spin"]
+
+[lints]
+workspace = true

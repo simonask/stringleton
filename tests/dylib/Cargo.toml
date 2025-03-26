@@ -1,0 +1,21 @@
+[package]
+name = "dylib-tests"
+publish = false
+edition = "2024"
+build = "build.rs"
+
+[lib]
+path = "lib.rs"
+test = true
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+stringleton = { path = "../../stringleton", features = ["debug-assertions"] }
+dynamic-library.path = "dynamic-library"
+c-dynamic-library.path = "c-dynamic-library"
+
+[features]
+debug-assertions = []

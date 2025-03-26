@@ -1,0 +1,28 @@
+[package]
+name = "stringleton-registry"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["rlib", "dylib"]
+path = "lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+hashbrown.workspace = true
+# Using once_cell because `std::sync::OnceLock` is not available in no_std.
+once_cell = { version = "1.21.1", optional = true }
+serde = { workspace = true, optional = true }
+spin = { version = "0.9.8", optional = true }
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+debug-assertions = []
+serde = ["dep:serde"]
+critical-section = ["once_cell/critical-section"]
+race = ["once_cell/race"]
+spin = ["dep:spin"]
