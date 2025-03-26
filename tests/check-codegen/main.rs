@@ -4,7 +4,7 @@ stringleton::enable!();
 
 #[inline(never)]
 #[unsafe(no_mangle)]
-fn get_symbol() -> Symbol {
+extern "C" fn get_symbol() -> Symbol {
     sym!("Hello, World!")
 }
 

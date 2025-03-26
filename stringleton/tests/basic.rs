@@ -1,6 +1,7 @@
 use hashbrown::HashMap;
 
-use stringleton::{Symbol, sym};
+use stringleton::{StaticSymbol, Symbol, static_sym, sym};
+
 stringleton::enable!();
 
 #[test]
@@ -37,4 +38,15 @@ fn sym_macro() {
 
     let t = sym!(SYM_CACHE);
     assert_eq!(t, "SYM_CACHE");
+}
+
+#[test]
+fn statics() {
+    static A: StaticSymbol = static_sym!(a);
+    const A2: StaticSymbol = static_sym!(a);
+    const C: StaticSymbol = static_sym!(c);
+    assert_eq!(A, A2);
+    assert_eq!(A, sym!(a));
+    assert_ne!(A2, sym!(b));
+    assert_eq!(C, sym!(c));
 }

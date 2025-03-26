@@ -1,8 +1,8 @@
 #![doc = include_str!("../README.md")]
 
-pub use stringleton_registry::{Registry, Symbol};
+pub use stringleton_registry::{Registry, StaticSymbol, Symbol};
 
-/// Create a static symbol from a literal
+/// Create a literal symbol from a literal identifier or string
 ///
 /// Symbols created with the [`sym!(...)`](sym) macro are statically allocated
 /// and deduplicated on program startup. This means that there is no discernible
@@ -71,9 +71,77 @@ macro_rules! sym {
         unsafe {
             // SAFETY: This site will be initialized by the static ctor because
             // it participates in the distributed slice.
-            ::core::pin::Pin::new(&SITE).get_after_ctor()
+            SITE.get_after_ctor()
         }}
     }
+}
+
+/// Create a static location for a literal symbol.
+///
+/// This macro works the same as [`sym!(...)`](sym), except that it produces a
+/// [`StaticSymbol`] instead of a [`Symbol`]. [`StaticSymbol`] implements
+/// `Deref<Target = Symbol>`, so it can be used in most places where a `Symbol`
+/// is expected.
+///
+/// This macro also requires the presence of a call to the [`enable!()`](enable)
+/// macro at the crate root.
+///
+/// This macro can be used in the initialization of a `static` or `const` variable:
+///
+/// ```rust,ignore
+/// static MY_SYMBOL: StaticSymbol = static_sym!("Hello, World!");
+/// const OTHER_SYMBOL: StaticSymbol = static_sym!(abc);
+///
+/// assert_eq!(MY_SYMBOL, sym!("Hello, World!"));
+/// assert_eq!(OTHER_SYMBOL, sym("abc"));
+/// ```
+///
+/// # Use case
+///
+/// Use this macro to avoid having too many "magic symbols" in your code
+/// (similar to "magic numbers"). Declare common symbol names centrally, and
+/// refer to them by their Rust names instead.
+///
+/// At runtime, using symbols declared as `static_sym!(...)` is actually very
+/// slightly less efficient than using `sym!(...)` directly, due to a necessary
+/// extra indirection. This is probably negligible in almost all cases, but it
+/// is counterintuitive nevertheless. _(This caveat may be lifted in future, but
+/// is due to a - potentially overzealous - check in the compiler which requires
+/// the indirection.)_
+///
+/// # Low-level details
+///
+/// Another (extremely niche) effect of using this macro over `sym!(...)` is
+/// that it can help reduce the link-time size of the symbol table. Each
+/// `sym!(...)` and `static_sym!(...)` call site adds 8 bytes to the `.bss`
+/// segment, so this can only matter when you have in the order of millions of
+/// symbols in your binary. Still, worth knowing if you are golfing binary size.
+#[macro_export]
+#[allow(clippy::crate_in_macro_def)]
+macro_rules! static_sym {
+    ($sym:ident) => {
+        $crate::static_sym!(@impl stringify!($sym))
+    };
+    ($sym:literal) => {
+        $crate::static_sym!(@impl $sym)
+    };
+    (@impl $sym:expr) => {{
+        unsafe {
+            // SAFETY: `new_unchecked()` is called with a `Site` that
+            // participates in the crate's symbol table.
+            $crate::StaticSymbol::new_unchecked({
+                // Tiny function just to get the `Site` for this symbol.
+                fn _stringleton_static_symbol_call_site() -> &'static $crate::internal::Site {
+                    // Note: Using `crate` to refer to the calling crate - this is deliberate.
+                    #[$crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE)]
+                    #[linkme(crate = $crate::internal::linkme)]
+                    static SITE: $crate::internal::Site = $crate::internal::Site::new(&$sym);
+                    &SITE
+                }
+                _stringleton_static_symbol_call_site
+            })
+        }
+    }}
 }
 
 /// Enable the [`sym!(...)`](sym) macro in the calling crate.

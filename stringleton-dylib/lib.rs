@@ -1,5 +1,7 @@
 //! Dynamic linking support for Stringleton.
 //!
+//! _[See the docs for `stringleton`](../stringleton/index.html)._
+//!
 //! This crate always produces a dynamic library, and it should be used by any
 //! crate that ends up being a `cdylib`. When this appears somewhere in the
 //! dependency graph, it causes the Rust compiler to produce a dynamic version

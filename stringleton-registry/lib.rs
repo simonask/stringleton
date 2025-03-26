@@ -1,6 +1,6 @@
 //! Registry helper crate for `stringleton`
 //!
-//! You probably don't have a use for this crate directly. Use the
+//! You probably don't need to use this crate directly. Use the
 //! [`stringleton`](../stringleton) crate or the
 //! [`stringleton-dylib`](../stringleton-dylib) crate instead.
 //!
@@ -27,13 +27,15 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 mod registry;
 mod site;
+mod static_symbol;
 mod symbol;
 
 pub use registry::*;
 pub use site::*;
+pub use static_symbol::*;
 pub use symbol::*;

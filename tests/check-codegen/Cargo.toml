@@ -13,3 +13,7 @@ stringleton.path = "../../stringleton"
 
 [lints]
 workspace = true
+
+[features]
+serde = ["stringleton/serde"]
+debug-assertions = ["stringleton/debug-assertions"]

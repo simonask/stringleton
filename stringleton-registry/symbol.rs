@@ -45,7 +45,7 @@ use crate::Registry;
 /// user input or runtime data is a great way to create memory leaks. Use only
 /// for static or semi-static identifiers, or otherwise trusted input.
 #[derive(Clone, Copy)]
-#[repr(C)]
+#[repr(transparent)] // Must be transparent because of `StaticSym::deref`.
 pub struct Symbol(&'static &'static str);
 
 impl Symbol {

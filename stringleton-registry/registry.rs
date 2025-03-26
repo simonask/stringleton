@@ -6,18 +6,20 @@ use hashbrown::{HashMap, hash_map};
 #[cfg(feature = "alloc")]
 use alloc::{borrow::ToOwned, boxed::Box};
 
-#[cfg(not(any(feature = "std", feature = "critical-section", feature = "race")))]
-compile_error!("Either the `std` or `critical-section` or `race` feature must be enabled");
+#[cfg(not(any(feature = "std", feature = "critical-section")))]
+compile_error!("Either the `std` or `critical-section` feature must be enabled");
 #[cfg(not(any(feature = "std", feature = "spin")))]
 compile_error!("Either the `std` or `spin` feature must be enabled");
 
-#[cfg(feature = "std")]
-use std::sync::{OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
-
-#[cfg(not(feature = "std"))]
-use once_cell::sync::OnceCell as OnceLock;
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "spin")]
 use spin::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+#[cfg(not(feature = "spin"))]
+use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+#[cfg(feature = "critical-section")]
+use once_cell::sync::OnceCell as OnceLock;
+#[cfg(not(feature = "critical-section"))]
+use std::sync::OnceLock;
 
 /// Helper to control the behavior of symbol strings in the registry's hash map.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -54,9 +56,9 @@ impl From<&str> for SymbolStr {
 /// This is available for advanced use cases, such as bulk-insertion of many
 /// symbols.
 pub struct Registry {
-    #[cfg(feature = "std")]
+    #[cfg(not(feature = "spin"))]
     store: std::sync::RwLock<Store>,
-    #[cfg(all(feature = "spin", not(feature = "std")))]
+    #[cfg(feature = "spin")]
     store: spin::RwLock<Store>,
 }
 
@@ -100,12 +102,12 @@ impl Registry {
     #[inline]
     pub fn read(&'static self) -> RegistryReadGuard {
         RegistryReadGuard {
-            #[cfg(feature = "std")]
+            #[cfg(not(feature = "spin"))]
             guard: self
                 .store
                 .read()
                 .unwrap_or_else(std::sync::PoisonError::into_inner),
-            #[cfg(not(feature = "std"))]
+            #[cfg(feature = "spin")]
             guard: self.store.read(),
         }
     }
@@ -117,12 +119,12 @@ impl Registry {
     #[inline]
     pub fn write(&'static self) -> RegistryWriteGuard {
         RegistryWriteGuard {
-            #[cfg(feature = "std")]
+            #[cfg(not(feature = "spin"))]
             guard: self
                 .store
                 .write()
                 .unwrap_or_else(std::sync::PoisonError::into_inner),
-            #[cfg(not(feature = "std"))]
+            #[cfg(feature = "spin")]
             guard: self.store.write(),
         }
     }

@@ -1,4 +1,8 @@
-use core::{cell::UnsafeCell, pin::Pin};
+#[allow(unused_imports)]
+use core::{
+    cell::UnsafeCell,
+    sync::atomic::{AtomicBool, AtomicPtr, Ordering},
+};
 
 use crate::Symbol;
 
@@ -18,7 +22,7 @@ pub struct Site {
     /// - After static initializers, this field is only ever read immutably.
     inner: UnsafeCell<&'static &'static str>,
     #[cfg(any(miri, feature = "debug-assertions"))]
-    initialized: core::sync::atomic::AtomicBool,
+    initialized: AtomicBool,
 }
 
 // SAFETY: The contents of `SymbolRegistration` are synchronized by (a) static
@@ -36,7 +40,7 @@ impl Site {
         Self {
             inner: UnsafeCell::new(string),
             #[cfg(any(miri, feature = "debug-assertions"))]
-            initialized: core::sync::atomic::AtomicBool::new(false),
+            initialized: AtomicBool::new(false),
         }
     }
 
@@ -70,6 +74,30 @@ impl Site {
         }
     }
 
+    /// Get a reference to the symbol contained in this site.
+    ///
+    /// # Safety
+    ///
+    /// This *MUST* only be called when `self` is part of the distributed slice
+    /// used by the ctor, and after static ctors have run. For example,
+    /// obtaining a `&'static self` via `Box::leak()` and calling this will not
+    /// work.
+    #[inline(always)]
+    #[must_use]
+    pub unsafe fn get_ref_after_ctor(&'static self) -> &'static Symbol {
+        #[cfg(miri)]
+        unsafe {
+            // Slow path.
+            return get_without_ctor_support(self);
+        }
+
+        #[cfg(not(miri))]
+        unsafe {
+            // Fast path.
+            get_with_ctor_support(self)
+        }
+    }
+
     /// Get the deduplicated symbol value.
     ///
     /// # Safety
@@ -80,16 +108,8 @@ impl Site {
     /// work.
     #[inline(always)]
     #[must_use]
-    pub unsafe fn get_after_ctor(self: Pin<&'static Self>) -> Symbol {
-        #[cfg(miri)]
-        unsafe {
-            return get_without_ctor_support(self);
-        }
-
-        #[cfg(not(miri))]
-        unsafe {
-            get_with_ctor_support(self)
-        }
+    pub unsafe fn get_after_ctor(&'static self) -> Symbol {
+        unsafe { *self.get_ref_after_ctor() }
     }
 }
 
@@ -97,63 +117,100 @@ impl Site {
 ///
 /// Must be called after static ctors have run.
 #[inline(always)]
-unsafe fn get_with_ctor_support(site: Pin<&'static Site>) -> Symbol {
+#[allow(unused)] // unused under `cfg(miri)`
+unsafe fn get_with_ctor_support(site: &'static Site) -> &'static Symbol {
     #[cfg(feature = "debug-assertions")]
     {
         assert!(
             site.initialized.load(core::sync::atomic::Ordering::Relaxed),
-            "This `sym!()` call site has not been initialized by a static constructor. This can happen for two reasons: \n
+            "This `sym!()` call site has not been initialized by a static constructor. This can happen for the following reasons: \n
   a) The current platform does not support static constructors (e.g., Miri)\n
-  b) The current crate is a dynamic library, but it reuses the registration from another crate, i.e., stringleton!(foreign_crate) is being used across a dynamic linking boundary"
+  b) The current crate is a dynamic library, but it reuses the registration from another crate, i.e., stringleton!(foreign_crate) is being used across a dynamic linking boundary\n
+  c) The call site is somehow reached without its containing binary having its static ctor functions called"
             );
     }
 
     unsafe {
         // SAFETY: The safety invariant is that this is only called after ctors
-        // have run, and only ctors write to this location.
-        Symbol::new_unchecked(*site.inner.get())
+        //         have run, and only ctors write to this location, so we can do
+        //         a non-atomic load.
+        let ptr: *const &'static &'static str = site.inner.get();
+        // SAFETY: Symbol is `#[repr(transparent)]`, so it is safe to cast
+        //         `&&'static &'static str` to `&Symbol`.
+        let ptr: *const Symbol = ptr.cast();
+        &*ptr
     }
 }
 
+/// This is the "slow path" used when Miri is active, because `linkme` and
+/// `ctor` are not supported there. It performs an atomic check on every access,
+/// and is therefore a lot slower.
 #[inline(always)]
 #[cfg(miri)]
-unsafe fn get_without_ctor_support(site: Pin<&'static Site>) -> Symbol {
-    use core::sync::atomic::{AtomicPtr, Ordering};
+unsafe fn get_without_ctor_support(site: &'static Site) -> &'static Symbol {
+    // CAUTION:
+    //
+    // Hold on for dear life, things are about to get nasty.
 
-    let mut atomic_ptr;
-    let atomic_inner: &AtomicPtr<&'static &'static str> = unsafe {
-        atomic_ptr = site.inner.get();
-        // SAFETY: `inner` is only ever accessed atomically, and the pointer
-        // is valid.
-        AtomicPtr::from_ptr(&mut atomic_ptr)
+    // This performs no memory access, only pointer casts.
+    let inner_ptr: *mut *mut &'static str = {
+        // We're casting a `&'static &'static str` to a `*mut &'static str`, and
+        // it's fine because we are never actually writing through the second
+        // indirection.
+        let ptr: *mut &'static &'static str = site.inner.get();
+        ptr.cast()
     };
 
     if site.initialized.load(Ordering::SeqCst) {
         unsafe {
-            // SAFETY: Already initialized, safe to use the inner pointer
-            // directly.
-            return Symbol::new_unchecked(*(atomic_inner.load(Ordering::SeqCst)));
+            // SAFETY:
+            // - Already initialized, so it is safe to access `inner`
+            //   non-atomically.
+            // - Symbol is `repr(transparent)`, so it is safe to cast a
+            //   `&&'static &'static str` to `&'static Symbol`.
+            return &*(inner_ptr as *const Symbol);
         }
     }
 
-    let stored_value = unsafe {
+    unsafe {
+        // SAFETY: See `initialize_atomic`.
+        initialize_atomic(inner_ptr, &site.initialized);
+    }
+
+    unsafe {
+        // SAFETY: Non-atomic access is safe from here on out.
+        &*(inner_ptr as *const Symbol)
+    }
+}
+
+#[cfg(miri)]
+unsafe fn initialize_atomic(inner_ptr: *mut *mut &'static str, initialized: &'static AtomicBool) {
+    // Cast to an atomic pointer
+    let atomic_inner: &AtomicPtr<&'static str> = unsafe {
+        // SAFETY: Until we set `initialized = true`, the location is only
+        // accessed atomically.
+        AtomicPtr::from_ptr(inner_ptr)
+    };
+
+    let stored_value: &'static &'static str = unsafe {
         // SAFETY: The pointer is valid.
         //
         // RELAXED: It doesn't matter if we read an outdated value here, because
-        // `initialized` is what controls the order of operations.
+        // `initialized` is what controls the order of operations, and we
+        // unconditionally perform a `SeqCst` load above and one below.
         &*(atomic_inner.load(Ordering::Relaxed))
     };
 
     let interned = crate::Registry::global().get_or_insert_static(stored_value);
 
-    // Store the value. Note: This is idempotent, because
-    // `Registry::get_or_insert_static()` is guaranteed to return the same
-    // pointer for the same string value.
-    atomic_inner.store(
-        core::ptr::from_ref::<&'static str>(interned.inner()) as *mut _,
-        Ordering::SeqCst,
-    );
-    // Use the fast path for subsequent calls.
-    site.initialized.store(true, Ordering::SeqCst);
-    interned
+    // Store the value.
+    //
+    // Note: This is idempotent, because `Registry::get_or_insert_static()` is
+    // guaranteed to return the same pointer for the same string value.
+    let ptr = core::ptr::from_ref(interned.inner());
+    atomic_inner.store(ptr as *mut &'static str, Ordering::SeqCst);
+
+    // Use the fast path for subsequent calls. Nobody takes the non-atomic route
+    // until they see this store.
+    initialized.store(true, Ordering::SeqCst);
 }
