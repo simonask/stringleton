@@ -1,11 +1,12 @@
 [workspace]
 members = [
-    "tests/dylib",
-    "tests/dylib/dynamic-library",
-    "tests/dylib/c-dynamic-library",
     "stringleton-dylib",
     "stringleton-registry",
     "stringleton",
+    "tests/dylib",
+    "tests/dylib/dynamic-library",
+    "tests/dylib/c-dynamic-library",
+    "tests/check-codegen",
 ]
 default-members = ["stringleton", "stringleton-registry"]
 resolver = "3"

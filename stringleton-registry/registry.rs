@@ -49,6 +49,10 @@ impl From<&str> for SymbolStr {
     }
 }
 
+/// The global symbol registry.
+///
+/// This is available for advanced use cases, such as bulk-insertion of many
+/// symbols.
 pub struct Registry {
     #[cfg(feature = "std")]
     store: std::sync::RwLock<Store>,
@@ -82,13 +86,19 @@ impl Registry {
         }
     }
 
+    /// Get the global registry.
     pub fn global() -> &'static Registry {
         static REGISTRY: OnceLock<Registry> = OnceLock::new();
         REGISTRY.get_or_init(Registry::new)
     }
 
+    /// Acquire a global read lock of the registry's data.
+    ///
+    /// New symbols cannot be created while the read lock is held, but acquiring
+    /// the lock does not prevent other threads from accessing the string
+    /// representation of a [`Symbol`].
     #[inline]
-    pub(crate) fn read(&'static self) -> RegistryReadGuard {
+    pub fn read(&'static self) -> RegistryReadGuard {
         RegistryReadGuard {
             #[cfg(feature = "std")]
             guard: self
@@ -100,6 +110,10 @@ impl Registry {
         }
     }
 
+    /// Acquire a global write lock of the registry's data.
+    ///
+    /// Note that acquiring this lock does not prevent other threads from
+    /// reading the string representation of a [`Symbol`].
     #[inline]
     pub fn write(&'static self) -> RegistryWriteGuard {
         RegistryWriteGuard {
@@ -113,7 +127,13 @@ impl Registry {
         }
     }
 
-    /// Resolve and register symbols from a table
+    /// Resolve and register symbols from a table.
+    ///
+    /// You should never need to call this function manually.
+    ///
+    /// Using the [`stringleton::enable!()`](../stringleton/macro.enable.html)
+    /// causes this to be called with the symbols from the current crate in a
+    /// static initializer function.
     ///
     /// # Safety
     ///
@@ -125,12 +145,22 @@ impl Registry {
         }
     }
 
+    /// Check if the registry contains a symbol matching `string` and return it
+    /// if so.
     #[must_use]
     #[inline]
     pub fn get(&'static self, string: &str) -> Option<Symbol> {
         self.read().guard.get(string)
     }
 
+    /// Get the existing symbol for `string`, or insert a new one.
+    ///
+    /// This opportunistically takes a read lock to check if the symbol exists,
+    /// and only takes a write lock if it doesn't.
+    ///
+    /// If you are inserting many new symbols, prefer acquiring the write lock
+    /// by calling [`write()`](Self::write) and then repeatedly call
+    /// [`RegistryWriteGuard::get_or_insert()`].
     #[cfg(any(feature = "std", feature = "alloc"))]
     #[must_use]
     pub fn get_or_insert(&'static self, string: &str) -> Symbol {
@@ -143,6 +173,20 @@ impl Registry {
         write.get_or_insert(string)
     }
 
+    /// Get the existing symbol for `string`, or insert a new one.
+    ///
+    /// This variant is slightly more efficient than
+    /// [`get_or_insert()`](Self::get_or_insert), because it can reuse the
+    /// storage of `string` directly for this symbol. In other words, if this
+    /// call inserted the symbol, the returned [`Symbol`] will be backed by
+    /// `string`, and no additional allocations will have happened.
+    ///
+    /// This opportunistically takes a read lock to check if the symbol exists,
+    /// and only takes a write lock if it doesn't.
+    ///
+    /// If you are inserting many new symbols, prefer acquiring the write lock
+    /// by calling [`write()`](Self::write) and then repeatedly call
+    /// [`RegistryWriteGuard::get_or_insert_static()`].
     #[inline]
     #[must_use]
     pub fn get_or_insert_static(&'static self, string: &'static &'static str) -> Symbol {
@@ -158,6 +202,9 @@ impl Registry {
 
     /// Check if a symbol has been registered at `address` (i.e., it has been
     /// produced by [`Symbol::to_ffi()`]), and return the symbol if so.
+    ///
+    /// This can be used to verify symbols that have made a round-trip over an
+    /// FFI boundary.
     #[inline]
     #[must_use]
     pub fn get_by_address(&'static self, address: u64) -> Option<Symbol> {
@@ -242,12 +289,21 @@ impl RegistryReadGuard {
         self.guard.by_string.is_empty()
     }
 
+    /// Check if the registry contains a symbol matching `string` and return it
+    /// if so.
+    ///
+    /// This is a simple hash table lookup.
     #[inline]
     #[must_use]
     pub fn get(&self, string: &str) -> Option<Symbol> {
         self.guard.get(string)
     }
 
+    /// Check if a symbol has been registered at `address` (i.e., it has been
+    /// produced by [`Symbol::to_ffi()`]), and return the symbol if so.
+    ///
+    /// This can be used to verify symbols that have made a round-trip over an
+    /// FFI boundary.
     #[inline]
     #[must_use]
     pub fn get_by_address(&self, address: u64) -> Option<Symbol> {
@@ -288,12 +344,18 @@ impl RegistryWriteGuard {
         self.guard.get(string)
     }
 
+    /// Check if a symbol has been registered at `address` (i.e., it has been
+    /// produced by [`Symbol::to_ffi()`]), and return the symbol if so.
+    ///
+    /// This can be used to verify symbols that have made a round-trip over an
+    /// FFI boundary.
     #[inline]
     #[must_use]
     pub fn get_by_address(&self, address: u64) -> Option<Symbol> {
         self.guard.get_by_address(address)
     }
 
+    /// Get the existing symbol for `string`, or insert a new one.
     #[inline]
     #[must_use]
     #[cfg(feature = "alloc")]
@@ -301,6 +363,13 @@ impl RegistryWriteGuard {
         self.guard.get_or_insert(string)
     }
 
+    /// Get the existing symbol for `string`, or insert a new one.
+    ///
+    /// This variant is slightly more efficient than
+    /// [`get_or_insert()`](Self::get_or_insert), because it can reuse the
+    /// storage of `string` directly for this symbol. In other words, if this
+    /// call inserted the symbol, the returned [`Symbol`] will be backed by
+    /// `string`, and no additional allocations will have happened.
     #[inline]
     #[must_use]
     pub fn get_or_insert_static(&mut self, string: &'static &'static str) -> Symbol {

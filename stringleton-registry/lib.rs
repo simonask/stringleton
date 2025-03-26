@@ -1,11 +1,15 @@
 //! Registry helper crate for `stringleton`
 //!
+//! You probably don't have a use for this crate directly. Use the
+//! [`stringleton`](../stringleton) crate or the
+//! [`stringleton-dylib`](../stringleton-dylib) crate instead.
+//!
 //! This crate exists to support both static and dynamic linking when using
 //! `stringleton`.
 //!
-//! All binaries must use the same registry, so when a dynamic library (`dylib`)
-//! dependency is using `stringleton`, this crate must also be compiled as a
-//! dynamic library, which is ensured by the [linkage
+//! All binaries in a process must use the same symbol registry, so when a
+//! dynamic library (`dylib`) dependency is using `stringleton`, this crate must
+//! also be compiled as a dynamic library, which is ensured by the [linkage
 //! rules](https://doc.rust-lang.org/reference/linkage.html).
 //!
 //! This only works automatically when such a dependency is "implicitly" linked

@@ -1,4 +1,6 @@
-pub use stringleton_registry::Symbol;
+#![doc = include_str!("../README.md")]
+
+pub use stringleton_registry::{Registry, Symbol};
 
 /// Create a static symbol from a literal
 ///
@@ -8,8 +10,8 @@ pub use stringleton_registry::Symbol;
 /// `if` statements and inner loops.
 ///
 /// **IMPORTANT:** For this macro to work in a particular crate, the
-/// [`stringleton!()`](crate::stringleton) macro must appear exactly once in the
-/// crate's root. This creates the global registration table at link-time.
+/// [`enable!()`](crate::enable) macro must appear exactly once in the crate's
+/// root. This creates the global registration table at link-time.
 ///
 /// # Safety
 ///
@@ -74,7 +76,7 @@ macro_rules! sym {
     }
 }
 
-/// Enable the `sym!(...)` macro in the calling crate.
+/// Enable the [`sym!(...)`](sym) macro in the calling crate.
 ///
 /// Put a call to this macro somewhere in the root of each crate that uses the
 /// `sym!(...)` macro.

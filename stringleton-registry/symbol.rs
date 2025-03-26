@@ -31,9 +31,9 @@ use crate::Registry;
 /// is **not** the same as the hash value of the underlying `str`.
 ///
 /// For this reason, `Symbol` does not implement `Borrow<str>`, which would
-/// imply that they would hash to the same value as their corresponding string
+/// imply that it would hash to the same value as its corresponding string
 /// value. To prevent accidents, `Symbol` also does not implement `Deref<Target
-/// = str>`.
+/// = str>` (_this restriction may be lifted in future_).
 ///
 /// The hash value of symbols may change even between invocations of the same
 /// binary, so should not be relied upon in any way.
@@ -54,12 +54,18 @@ impl Symbol {
     /// All calls to this function with the same string argument will return a
     /// bit-identical `Symbol`.
     ///
-    /// This function has significant overhead, because it needs to take at
-    /// least a global read-lock, and potentially a write-lock if the string has
-    /// not been seen before. When the string is statically known, prefer the
-    /// [`sym!(...)`](crate::sym) macro.
+    /// This function has some overhead, because it needs to take at least a
+    /// global read-lock, and potentially a write-lock if the string has not
+    /// been seen before. Additionally, opposed to
+    /// [`new_static()`](Self::new_static), this function also needs to allocate
+    /// a copy of the string on the heap and leak it.
     ///
-    /// Also note that symbols are never "garbage collected", so creating an
+    /// When the string is statically known at compile time, prefer the
+    /// [`sym!(...)`](../stringleton/macro.sym.html) macro. When the string is
+    /// statically known to live forever, prefer
+    /// [`new_static()`](Self::new_static).
+    ///
+    /// Please note that symbols are never "garbage collected", so creating an
     /// unbounded number of symbols in this way can be considered a memory leak.
     /// In particular, creating symbols from untrusted user input is a
     /// denial-of-service hazard.
@@ -85,14 +91,16 @@ impl Symbol {
     /// allocate memory, outside of what is needed for registering the symbol
     /// for subsequent lookups.
     ///
-    /// This function has significant overhead, because it needs to take at
-    /// least a global read-lock, and potentially a write-lock if the string has
-    /// not been seen before. When the string is statically known, prefer the
-    /// [`sym!(...)`](crate::sym) macro.
+    /// This function has some overhead, because it needs to take at least a
+    /// global read lock, and potentially a write-lock if the string has not
+    /// been seen before.
     ///
-    /// The use case for this function is the scenario where a symbol is not
-    /// statically known, but the caller wants to allocate it. For example, the
-    /// string could be part of a larger (leaked) allocation.
+    /// When the string is statically known at compile time, prefer the
+    /// [`sym!(...)`](../stringleton/macro.sym.html) macro.
+    ///
+    /// The use case for this function is the scenario when a string is only
+    /// known at runtime, but the caller wants to allocate it. For example, the
+    /// string could be part of a larger (manually leaked) allocation.
     #[inline]
     #[must_use]
     pub fn new_static(string: &'static &'static str) -> Symbol {
@@ -104,7 +112,8 @@ impl Symbol {
     /// This returns `None` if the string has not previously been registered.
     ///
     /// This function has some overhead, because it needs to acquire a global
-    /// read-lock, but it is faster than [`Symbol::new()`].
+    /// read-lock, but it is faster than [`Symbol::new()`] and never leaks
+    /// memory.
     pub fn get(string: impl AsRef<str>) -> Option<Symbol> {
         Self::get_(string.as_ref())
     }
@@ -124,7 +133,6 @@ impl Symbol {
     /// The only valid external usage of this function is to call it with a
     /// value previously returned from [`Symbol::inner()`].
     #[inline]
-    #[doc(hidden)]
     #[must_use]
     pub unsafe fn new_unchecked(registered_symbol: &'static &'static str) -> Symbol {
         Symbol(registered_symbol)

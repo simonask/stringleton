@@ -2,6 +2,11 @@
 name = "stringleton"
 version = "0.1.0"
 edition = "2024"
+authors = ["Simon Ask Ulsnes <simon@ulsnes.dk>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/simonask/stringleton"
+homepage = "https://docs.rs/stringleton/latest/stringleton"
+keywords = ["string", "interner", "intern", "str", "symbol", "caching"]
 
 [lib]
 path = "lib.rs"

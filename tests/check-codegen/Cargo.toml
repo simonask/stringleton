@@ -1,0 +1,15 @@
+[package]
+name = "check-codegen"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "check-codegen"
+path = "main.rs"
+
+[dependencies]
+stringleton.path = "../../stringleton"
+
+[lints]
+workspace = true
