@@ -6,6 +6,6 @@ fn main() {
         "c_dynamic_library"
     };
 
-    println!("cargo::rustc-link-search=dylib=target/{profile}/deps");
+    println!("cargo::rustc-link-search=target/{profile}/deps");
     println!("cargo::rustc-link-lib=dylib={libname}");
 }
