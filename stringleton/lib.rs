@@ -4,10 +4,10 @@ pub use stringleton_registry::{Registry, StaticSymbol, Symbol};
 
 /// Create a literal symbol from a literal identifier or string
 ///
-/// Symbols created with the [`sym!(...)`](sym) macro are statically allocated
-/// and deduplicated on program startup. This means that there is no discernible
-/// overhead at the point of use, making them suitable even in long chains of
-/// `if` statements and inner loops.
+/// Symbols created with the [`sym!(...)`](crate::sym) macro are statically
+/// allocated and deduplicated on program startup. This means that there is no
+/// discernible overhead at the point of use, making them suitable even in long
+/// chains of `if` statements and inner loops.
 ///
 /// **IMPORTANT:** For this macro to work in a particular crate, the
 /// [`enable!()`](crate::enable) macro must appear exactly once in the crate's
@@ -78,13 +78,13 @@ macro_rules! sym {
 
 /// Create a static location for a literal symbol.
 ///
-/// This macro works the same as [`sym!(...)`](sym), except that it produces a
-/// [`StaticSymbol`] instead of a [`Symbol`]. [`StaticSymbol`] implements
-/// `Deref<Target = Symbol>`, so it can be used in most places where a `Symbol`
-/// is expected.
+/// This macro works the same as [`sym!(...)`](crate::sym), except that it
+/// produces a [`StaticSymbol`] instead of a [`Symbol`]. [`StaticSymbol`]
+/// implements `Deref<Target = Symbol>`, so it can be used in most places where
+/// a `Symbol` is expected.
 ///
-/// This macro also requires the presence of a call to the [`enable!()`](enable)
-/// macro at the crate root.
+/// This macro also requires the presence of a call to the
+/// [`enable!()`](crate::enable) macro at the crate root.
 ///
 /// This macro can be used in the initialization of a `static` or `const` variable:
 ///
@@ -144,7 +144,7 @@ macro_rules! static_sym {
     }}
 }
 
-/// Enable the [`sym!(...)`](sym) macro in the calling crate.
+/// Enable the [`sym!(...)`](crate::sym) macro in the calling crate.
 ///
 /// Put a call to this macro somewhere in the root of each crate that uses the
 /// `sym!(...)` macro.
@@ -163,6 +163,22 @@ macro_rules! static_sym {
 /// **CAUTION:** Using the second variant is discouraged, because it will not
 /// work when the other crate is being loaded as a dynamic library. However, it
 /// is very slightly more efficient.
+///
+/// ## Why?
+///
+/// The reason that this macro is necessary is dynamic linking. Under "normal"
+/// circumstances where all dependencies are statically linked, all crates could
+/// share a single symbol table. But dynamic libraries are linked independently
+/// of their host binary, so they have no access to the host's symbol table, if
+/// it even has one.
+///
+/// On Unix-like platforms, there is likely a solution for this based on "weak"
+/// linkage, but:
+///
+/// 1. Weak linkage is not a thing in Windows (DLLs need to explicitly request
+///    functions from the host binary using `GetModuleHandle()`, which is more
+///    brittle).
+/// 2. The `#[linkage]` attribute is unstable in Rust.
 #[macro_export]
 macro_rules! enable {
     () => {

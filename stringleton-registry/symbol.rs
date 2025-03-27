@@ -398,10 +398,29 @@ mod tests {
 
     #[test]
     fn new_static() {
+        static UNIQUE_SYMBOL: &str =
+            "This is a globally unique string that exists nowhere else in the test binary.";
+
         let a = Symbol::new_static(&"a");
         let b = Symbol::new_static(&"b");
         let a2 = Symbol::new_static(&"a");
         assert_eq!(a, a2);
         assert_ne!(a, b);
+
+        let unique = Symbol::new_static(&UNIQUE_SYMBOL);
+        assert_eq!(
+            std::ptr::from_ref(unique.inner()),
+            std::ptr::from_ref(&UNIQUE_SYMBOL)
+        );
+    }
+
+    #[test]
+    fn address() {
+        let a = Symbol::new_static(&"a");
+        let a2 = Symbol::new(String::from("a"));
+        assert_eq!(a, a2);
+        assert_eq!(a.to_ffi(), a2.to_ffi());
+        let a3 = Symbol::try_from_ffi(a.to_ffi()).unwrap();
+        assert_eq!(a3, a);
     }
 }

@@ -2,21 +2,30 @@
 
 Extremely efficient string interning solution for Rust crates.
 
+*String interning:* The technique of representing all strings which are equal by
+a pointer or ID that is unique to the *contents* of that strings, such that O(n)
+string equality check becomes a O(1) pointer equality check.
+
+Interned strings in Stringleton are called "symbols", in the tradition of Ruby.
+
 ## Distinguishing characteristics
 
 - Ultra fast: Getting the string representation of a `Symbol` is a lock-free
   memory load. No reference counting or atomics involved.
 - Symbol literals (`sym!(...)`) are "free" at the call-site. Multiple
   invocations with the same string value are eagerly reconciled on program
-  startup, using link-time tricks.
+  startup using linker tricks.
 - Symbols are tiny. Just a single pointer - 8 bytes on 64-bit platforms.
+- Symbols are trivially copyable - no reference counting.
+- No size limit - symbol strings can be arbitrarily long (i.e., this is not a
+  "small string optimization" implementation).
 - Debugger friendly: If your debugger is able to display a plain Rust `&str`, it
   is capable of displaying `Symbol`.
 - Dynamic library support: Symbols can be passed across dynamic linking
   boundaries (terms and conditions apply - see the documentation of
   `stringleton-dylib`).
 - `no_std` support: `std` synchronization primitives used in the symbol registry
-  can be replaced with `once_cell` and `spin`. _See below for caveats._
+  can be replaced with `once_cell` and `spin`. *See below for caveats.*
 - `serde` support - symbols are serialized/deserialized as strings.
 - Fast bulk-insertion of symbols at runtime.
 
@@ -33,6 +42,7 @@ Extremely efficient string interning solution for Rust crates.
   of memory leaks, which is a denial-of-service hazard.
 - You need a bit-stable representation of symbols that does not change between
   runs.
+- Consider if `smol_str` or `cowstr` is a better fit for such use cases.
 
 ## Usage
 
@@ -58,18 +68,18 @@ assert_eq!(message.as_str().as_ptr(), message2.as_str().as_ptr());
 
 ## Crate features
 
-- **std** _(enabled by default)_: Use synchronization primitives from the
+- **std** *(enabled by default)*: Use synchronization primitives from the
   standard library. Implies `alloc`. When disabled, `critical-section` and
-  `spin` must both be enabled _(see below for caveats)_.
-- **alloc** _(enabled by default)_: Support creating symbols from `String`.
+  `spin` must both be enabled *(see below for caveats)*.
+- **alloc** *(enabled by default)*: Support creating symbols from `String`.
 - **serde**: Implements `serde::Serialize` and `serde::Deserialize` for symbols,
   which will be serialized/deserialized as plain strings.
 - **debug-assertions**: Enables expensive debugging checks at runtime - mostly
   useful to diagnose problems in complicated linker scenarios.
 - **critical-section**: When `std` is not enabled, this enables `once_cell` as a
   dependency with the `critical-section` feature enabled. Only relevant in
-  `no_std` environments. _[See `critical-section` for more
-  details.](https://docs.rs/critical-section/latest/critical_section/)_
+  `no_std` environments. *[See `critical-section` for more
+  details.](https://docs.rs/critical-section/latest/critical_section/)*
 - **spin**: When `std` is not enabled, this enables `spin` as a dependency,
   which is used to obtain global read/write locks on the symbol registry. Only
   relevant in `no_std` environments (and is a pessimization in other
@@ -103,7 +113,7 @@ are deduplicated when the program starts. Any theoretically faster solution
 would need fairly deep cooperation from the compiler aimed at this specific use
 case.
 
-Also, symbol literals are _always_ a memory load. The compiler cannot perform
+Also, symbol literals are *always* a memory load. The compiler cannot perform
 optimizations based on the contents of symbols, because it doesn't know how they
 will be reconciled until link time. For example, while `sym!(a) != sym!(a)` is
 always false, the compiler cannot eliminate code paths relying on that.
@@ -126,10 +136,10 @@ broadly compatible with dynamic libraries, but there are a few caveats:
    the dependency graph, the "host" crate must be prevented from linking
    statically to `stringleton`, because it would either cause duplicate symbol
    definitions, or worse, the host and client binaries would disagree about
-   which `Registry` to use. To avoid this, the _host_ binary can use
+   which `Registry` to use. To avoid this, the *host* binary can use
    `stringleton-dylib` explicitly instead of `stringleton`, which forces dynamic
    linkage of the symbol registry.
-4. Dynamically _unloading_ libraries is extremely risky (`dlclose()` and
+4. Dynamically *unloading* libraries is extremely risky (`dlclose()` and
    similar). Unloading a library that has any calls to the `sym!(..)` or
    `static_sym!(..)` macros is instant UB. Such a library can in principle use
    `Symbol::new()`, but probably not `Symbol::new_static()`.
