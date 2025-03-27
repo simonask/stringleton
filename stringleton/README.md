@@ -181,6 +181,20 @@ The latter can be supported by the `spin` and `critical-section` features:
 
 Do not use these features unless you are familiar with the tradeoffs.
 
+## WASM caveats
+
+`stringleton` works in WASM binaries, but since the `wasm32-unknown-unknown`
+does not support static constructors, the `sym!(..)` macro will fall back to a
+slightly slower implementation that uses atomics and a single branch. (Note that
+WASM is normally single-threaded, so atomic operations have no overhead.)
+
+Please note that it is *not* possible to pass a `Symbol` across a WASM boundary,
+because the host and the guest have different views of memory, and use separate
+registries. However, it is possible to pass an opaque `u64` representing the
+symbol across such a boundary using `Symbol::to_ffi()` and
+`Symbol::try_from_ffi()`. Getting the string representation of the symbol is
+only possible on the side that owns the symbol.
+
 ## Name
 
 The name is a portmanteau of "string" and "singleton".

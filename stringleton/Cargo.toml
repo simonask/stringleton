@@ -8,7 +8,6 @@ repository = "https://github.com/simonask/stringleton"
 homepage = "https://docs.rs/stringleton/latest/stringleton"
 keywords = ["string", "interner", "intern", "str", "symbol"]
 description = "Extremely fast string interning library"
-readme = "../README.md"
 
 [lib]
 path = "lib.rs"
