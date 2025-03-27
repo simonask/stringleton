@@ -33,6 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
       - name: Build
         run: cargo +nightly miri test --features debug-assertions
   lint:
