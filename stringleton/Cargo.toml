@@ -1,6 +1,6 @@
 [package]
 name = "stringleton"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Simon Ask Ulsnes <simon@ulsnes.dk>"]
 license = "MIT OR Apache-2.0"
@@ -17,7 +17,7 @@ crate-type = ["rlib"]
 [dependencies]
 ctor.workspace = true
 linkme.workspace = true
-stringleton-registry = { version = "0.1.0", path = "../stringleton-registry", default-features = false }
+stringleton-registry = { version = "0.1.1", path = "../stringleton-registry", default-features = false }
 
 [dev-dependencies]
 hashbrown.workspace = true
