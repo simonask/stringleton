@@ -37,6 +37,20 @@ jobs:
           components: miri
       - name: Build
         run: cargo +nightly miri test --features debug-assertions
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Test stringleton-registry (Chrome)
+        run: cd stringleton-registry && wasm-pack test --headless --chrome && cd ..
+      - name: Test stringleton (Chrome)
+        run: cd stringleton && wasm-pack test --headless --chrome && cd ..
+      - name: Test stringleton-registry (Firefox)
+        run: cd stringleton-registry && wasm-pack test --headless --firefox && cd ..
+      - name: Test stringleton (Firefox)
+        run: cd stringleton && wasm-pack test --headless --firefox && cd ..
   lint:
     name: Lint
     runs-on: ubuntu-latest

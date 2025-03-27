@@ -21,7 +21,7 @@ pub struct Site {
     ///   threads), so access is trivially synchronized.
     /// - After static initializers, this field is only ever read immutably.
     inner: UnsafeCell<&'static &'static str>,
-    #[cfg(any(miri, feature = "debug-assertions"))]
+    #[cfg(any(miri, target_arch = "wasm32", feature = "debug-assertions"))]
     initialized: AtomicBool,
 }
 
@@ -39,7 +39,7 @@ impl Site {
     pub const fn new(string: &'static &'static str) -> Self {
         Self {
             inner: UnsafeCell::new(string),
-            #[cfg(any(miri, feature = "debug-assertions"))]
+            #[cfg(any(miri, target_arch = "wasm32", feature = "debug-assertions"))]
             initialized: AtomicBool::new(false),
         }
     }
@@ -64,7 +64,7 @@ impl Site {
     #[doc(hidden)]
     #[inline(always)]
     pub unsafe fn initialize(&self, interned: Symbol) {
-        #[cfg(any(miri, feature = "debug-assertions"))]
+        #[cfg(any(miri, target_arch = "wasm32", feature = "debug-assertions"))]
         {
             self.initialized
                 .store(true, core::sync::atomic::Ordering::SeqCst);
@@ -85,13 +85,13 @@ impl Site {
     #[inline(always)]
     #[must_use]
     pub unsafe fn get_ref_after_ctor(&'static self) -> &'static Symbol {
-        #[cfg(miri)]
+        #[cfg(any(miri, target_arch = "wasm32"))]
         unsafe {
             // Slow path.
             return get_without_ctor_support(self);
         }
 
-        #[cfg(not(miri))]
+        #[cfg(not(any(miri, target_arch = "wasm32")))]
         unsafe {
             // Fast path.
             get_with_ctor_support(self)
@@ -117,7 +117,7 @@ impl Site {
 ///
 /// Must be called after static ctors have run.
 #[inline(always)]
-#[allow(unused)] // unused under `cfg(miri)`
+#[allow(unused)] // unused under `cfg(any(miri, target_arch = "wasm32"))`
 unsafe fn get_with_ctor_support(site: &'static Site) -> &'static Symbol {
     #[cfg(feature = "debug-assertions")]
     {
@@ -146,7 +146,7 @@ unsafe fn get_with_ctor_support(site: &'static Site) -> &'static Symbol {
 /// `ctor` are not supported there. It performs an atomic check on every access,
 /// and is therefore a lot slower.
 #[inline(always)]
-#[cfg(miri)]
+#[cfg(any(miri, target_arch = "wasm32"))]
 unsafe fn get_without_ctor_support(site: &'static Site) -> &'static Symbol {
     // CAUTION:
     //
@@ -183,7 +183,7 @@ unsafe fn get_without_ctor_support(site: &'static Site) -> &'static Symbol {
     }
 }
 
-#[cfg(miri)]
+#[cfg(any(miri, target_arch = "wasm32"))]
 unsafe fn initialize_atomic(inner_ptr: *mut *mut &'static str, initialized: &'static AtomicBool) {
     // Cast to an atomic pointer
     let atomic_inner: &AtomicPtr<&'static str> = unsafe {

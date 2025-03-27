@@ -22,6 +22,9 @@ stringleton-registry = { version = "0.1.1", path = "../stringleton-registry", de
 [dev-dependencies]
 hashbrown.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [features]
 default = ["std"]
 std = ["alloc", "stringleton-registry/std"]

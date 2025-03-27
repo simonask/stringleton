@@ -65,8 +65,8 @@ macro_rules! sym {
     };
     (@impl $sym:expr) => {{
         // Note: Using `crate` to refer to the calling crate - this is deliberate.
-        #[$crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE)]
-        #[linkme(crate = $crate::internal::linkme)]
+        #[cfg_attr(not(target_arch = "wasm32"), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
+        #[cfg_attr(not(target_arch = "wasm32"), linkme(crate = $crate::internal::linkme))]
         static SITE: $crate::internal::Site = $crate::internal::Site::new(&$sym);
         unsafe {
             // SAFETY: This site will be initialized by the static ctor because
@@ -133,8 +133,8 @@ macro_rules! static_sym {
                 // Tiny function just to get the `Site` for this symbol.
                 fn _stringleton_static_symbol_call_site() -> &'static $crate::internal::Site {
                     // Note: Using `crate` to refer to the calling crate - this is deliberate.
-                    #[$crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE)]
-                    #[linkme(crate = $crate::internal::linkme)]
+                    #[cfg_attr(not(target_arch = "wasm32"), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
+                    #[cfg_attr(not(target_arch = "wasm32"), linkme(crate = $crate::internal::linkme))]
                     static SITE: $crate::internal::Site = $crate::internal::Site::new(&$sym);
                     &SITE
                 }
@@ -183,6 +183,7 @@ macro_rules! static_sym {
 macro_rules! enable {
     () => {
         #[doc(hidden)]
+        #[cfg(not(target_arch = "wasm32"))]
         pub(crate) mod _stringleton_enabled {
             #[$crate::internal::linkme::distributed_slice]
             #[linkme(crate = $crate::internal::linkme)]
@@ -203,6 +204,7 @@ macro_rules! enable {
 
         #[allow(unused)]
         #[doc(hidden)]
+        #[cfg(not(target_arch = "wasm32"))]
         pub use _stringleton_enabled::_stringleton_register_symbols;
     };
     ($krate:path) => {
@@ -217,4 +219,66 @@ pub mod internal {
     pub use linkme;
     pub use stringleton_registry::Registry;
     pub use stringleton_registry::Site;
+}
+
+#[cfg(test)]
+enable!();
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
+
+    use hashbrown::HashMap;
+
+    use super::{StaticSymbol, Symbol, static_sym, sym};
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn basic() {
+        let a = sym!(a);
+        let b = sym!(b);
+        let c = sym!(c);
+        let a2 = sym!(a);
+
+        assert_ne!(a, b);
+        assert_ne!(a, c);
+        assert_ne!(b, c);
+        assert_eq!(a, a2);
+    }
+
+    #[test]
+    fn sym_macro() {
+        let ident: Symbol = sym!(hello);
+        let string: Symbol = sym!("hello");
+        let dynamic = Symbol::new_static(&"hello");
+        assert_eq!(ident, string);
+        assert_eq!(ident, dynamic);
+
+        let mut map = HashMap::new();
+        map.insert(ident, 1);
+        map.insert(string, 2);
+        map.insert(dynamic, 3);
+        assert_eq!(map.len(), 1);
+        assert!(map.into_iter().eq([(ident, 3)]));
+
+        assert_eq!(ident.to_string(), "hello");
+        assert_eq!(ident.as_str(), "hello");
+
+        let t = sym!(SYM_CACHE);
+        assert_eq!(t, "SYM_CACHE");
+    }
+
+    #[test]
+    fn statics() {
+        static A: StaticSymbol = static_sym!(a);
+        const A2: StaticSymbol = static_sym!(a);
+        const C: StaticSymbol = static_sym!(c);
+        assert_eq!(A, A2);
+        assert_eq!(A, sym!(a));
+        assert_ne!(A2, sym!(b));
+        assert_eq!(C, sym!(c));
+    }
 }
