@@ -11,7 +11,7 @@ env:
 
 jobs:
   build-std:
-    name: Build and test (std)
+    name: Build and test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -28,7 +28,7 @@ jobs:
       - name: Run dylib-tests
         run: cargo test -p dylib-tests --features debug-assertions
   build-miri:
-    name: Build and test (Miri)
+    name: Miri
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,19 +38,20 @@ jobs:
       - name: Build
         run: cargo +nightly miri test --features debug-assertions
   wasm:
+    name: WASM
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Test stringleton-registry (Chrome)
-        run: cd stringleton-registry && wasm-pack test --headless --chrome && cd ..
+        run: cd stringleton-registry && wasm-pack test --headless --chrome --features debug-assertions && cd ..
       - name: Test stringleton (Chrome)
-        run: cd stringleton && wasm-pack test --headless --chrome && cd ..
+        run: cd stringleton && wasm-pack test --headless --chrome --features debug-assertions && cd ..
       - name: Test stringleton-registry (Firefox)
-        run: cd stringleton-registry && wasm-pack test --headless --firefox && cd ..
+        run: cd stringleton-registry && wasm-pack test --headless --firefox --features debug-assertions && cd ..
       - name: Test stringleton (Firefox)
-        run: cd stringleton && wasm-pack test --headless --firefox && cd ..
+        run: cd stringleton && wasm-pack test --headless --firefox --features debug-assertions && cd ..
   lint:
     name: Lint
     runs-on: ubuntu-latest
