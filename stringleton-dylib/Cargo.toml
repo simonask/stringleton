@@ -16,7 +16,7 @@ crate-type = ["dylib"]
 [dependencies]
 ctor.workspace = true
 linkme.workspace = true
-stringleton-registry = { path = "../stringleton-registry", default-features = false }
+stringleton-registry = { version = "0.1.0", path = "../stringleton-registry", default-features = false }
 
 [features]
 default = ["std"]
