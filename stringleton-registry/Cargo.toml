@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/simonask/stringleton"
 homepage = "https://docs.rs/stringleton/latest/stringleton"
 keywords = ["string", "interner", "intern", "str", "symbol", "caching"]
+description = "Helper crate for the stringleton crate"
 
 [lib]
 crate-type = ["rlib", "dylib"]
