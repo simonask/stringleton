@@ -25,6 +25,9 @@ spin = { version = "0.9.8", optional = true, default-features = false, features 
     "rwlock",
 ] }
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [features]
 default = ["std"]
 std = ["alloc"]

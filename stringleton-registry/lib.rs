@@ -39,3 +39,52 @@ pub use registry::*;
 pub use site::*;
 pub use static_symbol::*;
 pub use symbol::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test as test;
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn new() {
+        let a = Symbol::new("a");
+        let b = Symbol::new("b");
+        let a2 = Symbol::new("a");
+        assert_eq!(a, a2);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn new_static() {
+        static UNIQUE_SYMBOL: &str =
+            "This is a globally unique string that exists nowhere else in the test binary.";
+
+        let a = Symbol::new_static(&"a");
+        let b = Symbol::new_static(&"b");
+        let a2 = Symbol::new_static(&"a");
+        assert_eq!(a, a2);
+        assert_ne!(a, b);
+
+        let unique = Symbol::new_static(&UNIQUE_SYMBOL);
+        assert_eq!(
+            std::ptr::from_ref(unique.inner()),
+            std::ptr::from_ref(&UNIQUE_SYMBOL)
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn address() {
+        let a = Symbol::new_static(&"a");
+        let a2 = Symbol::new(alloc::string::String::from("a"));
+        assert_eq!(a, a2);
+        assert_eq!(a.to_ffi(), a2.to_ffi());
+        let a3 = Symbol::try_from_ffi(a.to_ffi()).unwrap();
+        assert_eq!(a3, a);
+    }
+}

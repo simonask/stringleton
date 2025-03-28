@@ -8,7 +8,6 @@ repository = "https://github.com/simonask/stringleton"
 homepage = "https://docs.rs/stringleton/latest/stringleton"
 keywords = ["string", "interner", "intern", "str", "symbol"]
 description = "Extremely fast string interning library"
-readme = "../README.md"
 
 [lib]
 path = "lib.rs"
@@ -21,6 +20,9 @@ stringleton-registry = { version = "0.1.1", path = "../stringleton-registry", de
 
 [dev-dependencies]
 hashbrown.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
 
 [features]
 default = ["std"]
