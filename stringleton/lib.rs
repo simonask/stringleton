@@ -65,8 +65,8 @@ macro_rules! sym {
     };
     (@impl $sym:expr) => {{
         // Note: Using `crate` to refer to the calling crate - this is deliberate.
-        #[cfg_attr(not(target_arch = "wasm32"), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
-        #[cfg_attr(not(target_arch = "wasm32"), linkme(crate = $crate::internal::linkme))]
+        #[cfg_attr(not(any(miri, target_arch = "wasm32")), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
+        #[cfg_attr(not(any(miri, target_arch = "wasm32")), linkme(crate = $crate::internal::linkme))]
         static SITE: $crate::internal::Site = $crate::internal::Site::new(&$sym);
         unsafe {
             // SAFETY: This site will be initialized by the static ctor because
@@ -133,8 +133,8 @@ macro_rules! static_sym {
                 // Tiny function just to get the `Site` for this symbol.
                 fn _stringleton_static_symbol_call_site() -> &'static $crate::internal::Site {
                     // Note: Using `crate` to refer to the calling crate - this is deliberate.
-                    #[cfg_attr(not(target_arch = "wasm32"), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
-                    #[cfg_attr(not(target_arch = "wasm32"), linkme(crate = $crate::internal::linkme))]
+                    #[cfg_attr(not(any(miri, target_arch = "wasm32")), $crate::internal::linkme::distributed_slice(crate::_stringleton_enabled::TABLE))]
+                    #[cfg_attr(not(any(miri, target_arch = "wasm32")), linkme(crate = $crate::internal::linkme))]
                     static SITE: $crate::internal::Site = $crate::internal::Site::new(&$sym);
                     &SITE
                 }
@@ -183,7 +183,7 @@ macro_rules! static_sym {
 macro_rules! enable {
     () => {
         #[doc(hidden)]
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(any(miri, target_arch = "wasm32")))]
         pub(crate) mod _stringleton_enabled {
             #[$crate::internal::linkme::distributed_slice]
             #[linkme(crate = $crate::internal::linkme)]
@@ -204,11 +204,12 @@ macro_rules! enable {
 
         #[allow(unused)]
         #[doc(hidden)]
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(any(miri, target_arch = "wasm32")))]
         pub use _stringleton_enabled::_stringleton_register_symbols;
     };
     ($krate:path) => {
         #[doc(hidden)]
+        #[cfg(not(any(miri, target_arch = "wasm32")))]
         pub(crate) use $krate::_stringleton_enabled;
     };
 }
@@ -233,7 +234,7 @@ mod tests {
 
     use hashbrown::HashMap;
 
-    use super::{StaticSymbol, Symbol, static_sym, sym};
+    use super::{StaticSymbol, Symbol};
 
     #[test]
     #[cfg(feature = "alloc")]
