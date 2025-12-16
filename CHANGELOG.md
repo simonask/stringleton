@@ -1,6 +1,11 @@
 # Changelog
 
-## Next release
+## 0.2.1 - 2025-12-16
+
+### Bugfixes
+
+- Fixed the `stringleton::enable!()` macro when referring to foreign crates.
+- Fixed usage of `sym!()` in external tests.
 
 ### Bugfixes
 

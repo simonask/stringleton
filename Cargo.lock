@@ -334,7 +334,7 @@ checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
 
 [[package]]
 name = "stringleton"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ctor",
  "hashbrown",
@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "stringleton-dylib"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ctor",
  "linkme",
@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "stringleton-registry"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "hashbrown",
  "once_cell",
