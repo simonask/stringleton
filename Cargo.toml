@@ -12,10 +12,10 @@ default-members = ["stringleton", "stringleton-registry"]
 resolver = "3"
 
 [workspace.dependencies]
-ctor = { version = "0.4.1", default-features = false }
+ctor = { version = "0.6.3", default-features = false }
 linkme = "0.3.32"
 serde = { version = "1.0.219" }
-hashbrown = "0.15.2"
+hashbrown = "0.16.1"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
