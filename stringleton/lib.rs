@@ -149,6 +149,17 @@ macro_rules! static_sym {
 /// Put a call to this macro somewhere in the root of each crate that uses the
 /// `sym!(...)` macro.
 ///
+/// The second variant reuses the symbol table of another crate, and this is
+/// particularly needed due to the way external tests (in the `tests/`
+/// subdirectory of the project) are compiled. Test files `tests/foo.rs`, are
+/// compiled as "pseudo-crates", so they are semantically a separate crate from
+/// the main library crate. But they are compiled into the same binary, so just
+/// using `stringleton::enable!()` without arguments will cause linker errors
+/// (`duplicate #[distributed_slice] with name "TABLE"`).
+///
+/// In external tests using [`sym!()`], the test file should instead use
+/// `stringleton::enable!(main_library_crate)`.
+///
 /// ## Details
 ///
 /// This creates a "distributed slice" containing all symbols in this crate, as
@@ -184,11 +195,11 @@ macro_rules! enable {
     () => {
         #[doc(hidden)]
         #[cfg(not(any(miri, target_arch = "wasm32")))]
-        pub(crate) mod _stringleton_enabled {
+        pub mod _stringleton_enabled {
             #[$crate::internal::linkme::distributed_slice]
             #[linkme(crate = $crate::internal::linkme)]
             #[doc(hidden)]
-            pub(crate) static TABLE: [$crate::internal::Site] = [..];
+            pub static TABLE: [$crate::internal::Site] = [..];
 
             $crate::internal::ctor::declarative::ctor! {
                 #[ctor]
@@ -207,10 +218,10 @@ macro_rules! enable {
         #[cfg(not(any(miri, target_arch = "wasm32")))]
         pub use _stringleton_enabled::_stringleton_register_symbols;
     };
-    ($krate:path) => {
+    ($($krate:tt)+) => {
         #[doc(hidden)]
         #[cfg(not(any(miri, target_arch = "wasm32")))]
-        pub(crate) use $krate::_stringleton_enabled;
+        pub use $($krate)*::_stringleton_enabled;
     };
 }
 

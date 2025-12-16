@@ -66,6 +66,11 @@ assert_eq!(message, message2);
 assert_eq!(message.as_str().as_ptr(), message2.as_str().as_ptr());
 ```
 
+**NOTE:** In external tests (i.e. those in a separate `tests/` subdirectory), each
+test file should call `stringleton::enable!(main_library_crate)` instead of
+`stringleton::enable!()`. See the documentation of the `enable!()` macro for more
+details.
+
 ## Crate features
 
 - **std** *(enabled by default)*: Use synchronization primitives from the

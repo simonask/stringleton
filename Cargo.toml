@@ -7,8 +7,10 @@ members = [
     "tests/dylib/dynamic-library",
     "tests/dylib/c-dynamic-library",
     "tests/check-codegen",
+    "tests/foreign-crate-registry",
+    "tests/foreign-crate",
 ]
-default-members = ["stringleton", "stringleton-registry"]
+default-members = ["stringleton", "stringleton-registry", "tests/check-codegen", "tests/foreign-crate-registry", "tests/foreign-crate"]
 resolver = "3"
 
 [workspace.dependencies]
