@@ -1,0 +1,15 @@
+[package]
+name = "foreign-crate-registry"
+publish = false
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+test = true
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+stringleton = { path = "../../stringleton", features = ["debug-assertions"] }

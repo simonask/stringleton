@@ -2,6 +2,11 @@
 
 ## Next release
 
+### Bugfixes
+
+- Fixed the `stringleton::enable!()` macro when referring to foreign crates.
+- Fixed usage of `sym!()` in external tests.
+
 ### Dependencies
 
 - Bumped `spin` to `0.10.0`.
